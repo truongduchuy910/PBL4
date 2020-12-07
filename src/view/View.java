@@ -34,7 +34,7 @@ public class View implements model.bean.View {
 			excute(command);
 
 		} while (!command.equals("exit"));
-		System.out.println("Bye!");
+		Console.log("Bye!");
 		System.exit(0);
 	}
 
@@ -47,7 +47,7 @@ public class View implements model.bean.View {
 				if (!server.getIsInCS())
 					server.broadcast(Type.REQ);
 				else
-					System.out.println("You was in CS.");
+					Console.log("You was in CS.");
 				break;
 			case "rel":
 				if (server.getIsInCS()) {
@@ -61,12 +61,12 @@ public class View implements model.bean.View {
 					}
 					server.broadcast(Type.REL);
 				} else
-					System.out.println("You wasn't in CS.");
+					Console.log("You wasn't in CS.");
 
 				break;
 
 			default:
-				System.out.println("Command not found");
+				Console.log("Command not found");
 				break;
 			}
 
@@ -91,23 +91,14 @@ public class View implements model.bean.View {
 
 	@Override
 	public void render() throws RemoteException {
-		System.out.println();
+
+		Console.log();
 		int master = server.getIndex();
+		String CS = Color.BG_PURPLE + "       " + Color.TEXT_RESET;
 		if (server.getIsInCS()) {
-			System.out.print("(IN CS) ");
+			CS = Color.BG_YELLOW + "(IN CS)" + Color.TEXT_RESET;
 		}
-		System.out.println("========== SERVER [ s" + master + " at c" + server.getTimestamp() + " ]");
-		try {
-			for (Server server : server.getOrthers()) {
-				int port = server.getIndex();
-				System.out.print(" [ s" + port + " at c" + server.getTimestamp() + " ]");
-			}
-		} catch (Exception e) {
-			System.err.println("Cannot get server");
-
-		}
-		System.out.println();
-
+		Console.log(CS + " SERVER " + master + " at " + server.getTimestamp());
 		try {
 			Stack<Message> transaction = new Stack<Message>();
 			transaction.addAll(server.getSend());
@@ -119,24 +110,27 @@ public class View implements model.bean.View {
 				}
 			};
 			transaction.sort(c);
-			System.out.println("Transaction");
-			System.out.println("AT     TYPE        FROM          TO");
+
 			for (Message message : transaction) {
-				System.out.print(message.getAt() + ". ");
-				System.out.print(message.getDimension() + " ");
-				System.out.println(message.getDisplay());
+				String dimension = message.getDimension();
+				if (dimension.equals("  ->")) {
+					dimension = Color.BG_BLUE + dimension + Color.TEXT_RESET;
+				} else {
+					dimension = Color.BG_RED + dimension + Color.TEXT_RESET;
+				}
+				Console.log(message.getAt() + " " + dimension + " " + message.getDisplay());
 			}
-			System.out.println("CS");
+			Console.log(Color.BG_PURPLE, "CS     ");
 
 			for (Server cs : server.getCS()) {
-				System.out.println("s" + cs.getIndex());
+				Console.log("SERVER " + cs.getIndex());
 			}
 
 		} catch (Exception e) {
-			System.out.println("...");
+			Console.log("...");
 		}
 
-		System.out.println();
+		Console.log();
 	}
 
 }

@@ -2,9 +2,32 @@ package model.BO;
 
 import java.rmi.RemoteException;
 
+import view.Color;
+
 public class Message implements model.bean.Message {
 	public static enum Type {
 		REQ, REL, REP
+	}
+
+	public String getTypeString() {
+		switch (this.type) {
+		case REQ:
+			return Color.TEXT_GREEN + "REQUEST" + Color.TEXT_RESET;
+		case REP:
+			return Color.TEXT_YELLOW + "REPLY  " + Color.TEXT_RESET;
+		case REL:
+			return Color.TEXT_BLUE + "RELEASE" + Color.TEXT_RESET;
+		default:
+			return "       ";
+		}
+	}
+
+	public int getStart() {
+		return start;
+	}
+
+	public int getEnd() {
+		return end;
 	}
 
 	public Type type;
@@ -50,7 +73,7 @@ public class Message implements model.bean.Message {
 		this.at = at;
 	}
 
-	public String getStart() {
+	public String getStartString() {
 		if (start != -1)
 			if (start < 10)
 				return "_" + Integer.toString(start);
@@ -64,7 +87,7 @@ public class Message implements model.bean.Message {
 		this.start = start;
 	}
 
-	public String getEnd() {
+	public String getEndString() {
 		if (end != -1)
 			if (end < 10)
 				return "_" + Integer.toString(end);
@@ -154,8 +177,7 @@ public class Message implements model.bean.Message {
 	public String getDisplay() {
 
 		try {
-			return type.toString() + " [s" + from.getIndex() + " at c" + getStart() + "] [s" + to.getIndex() + " at c"
-					+ getEnd() + "] " + getSleep() + " ms";
+			return getTypeString() + " from [s" + from.getIndex() + "] to [s" + to.getIndex() + "] " + this.getSleep();
 		} catch (Exception e) {
 			return e.toString();
 		}
@@ -164,7 +186,6 @@ public class Message implements model.bean.Message {
 
 	public void delivery() throws RemoteException {
 		String command = this.toString();
-
 		to.receipt(command);
 	}
 

@@ -11,17 +11,19 @@ class Receive extends Thread {
 	private int sleep;
 
 	public Receive(Server server, Message message) {
-		message.setDimension("<--");
+
 		this.message = message;
 		this.sender = server;
 
-	}
-
-	public void run() {
 		/**
 		 * find max and inscrease
 		 */
-		sender.setTimestamp(Math.max(sender.getTimestamp(), message.getTimestamp()) + 1);
+		sender.setTimestamp(Math.max(sender.getTimestamp(), message.getStart()) + 1);
+		this.message.setDimension("<-  ");
+	}
+
+	public void run() {
+
 		/**
 		 * fill info
 		 */
@@ -60,7 +62,7 @@ class Receive extends Thread {
 					Message rep = new Message(Type.REP, sender, message.getFrom(), sender.getTimestamp(), -1);
 					rep.setSleep(sleep);
 					rep.setAt(sender.getTimestamp());
-					rep.setDimension("-->");
+					rep.setDimension("  ->");
 					rep.delivery();
 					sender.getSend().add(rep);
 				}
@@ -81,7 +83,7 @@ class Receive extends Thread {
 					Message rep = new Message(Type.REP, sender, server, sender.getTimestamp(), -1);
 					rep.setSleep(sleep);
 					rep.setAt(sender.getTimestamp());
-					rep.setDimension("-->");
+					rep.setDimension("  ->");
 					rep.delivery();
 
 					sender.getSend().add(rep);
