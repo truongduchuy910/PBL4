@@ -1,11 +1,9 @@
 package model.bean;
 
-import java.rmi.RemoteException;
+public interface Lamport {
+	public void request(model.BO.Server sender) throws Exception;
 
-import model.BO.Message.Type;
+	public void release(model.BO.Server sender) throws Exception;
 
-public interface Lamport extends Server {
-	public void request(String command) throws RemoteException;
-
-	public void broadcast(Type type) throws Exception;
+	public void receive(model.BO.Server receiver, String command) throws Exception;
 }

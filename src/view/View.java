@@ -9,7 +9,7 @@ import model.BO.Message;
 import model.BO.Message.Type;
 import model.bean.Server;
 
-public class View implements model.bean.View {
+public class View {
 	private int port = 3000;
 	private int start = 3000;
 	private int limit = 3;
@@ -30,6 +30,7 @@ public class View implements model.bean.View {
 				render();
 			} catch (Exception e) {
 			}
+			System.out.print(Color.TEXT_CYAN + "➜ " + Color.TEXT_RESET);
 			command = scanner.nextLine();
 			excute(command);
 
@@ -44,25 +45,10 @@ public class View implements model.bean.View {
 		try {
 			switch (syntax[0]) {
 			case "req":
-				if (!server.getIsInCS())
-					server.broadcast(Type.REQ);
-				else
-					Console.log("You was in CS.");
+				server.send("req");
 				break;
 			case "rel":
-				if (server.getIsInCS()) {
-					/**
-					 * Fill IsRel with false for next REQ
-					 */
-					server.setIsInCS(false);
-
-					for (Server orther : server.getOrthers()) {
-						server.getIsRep().set(orther.getIndex(), false);
-					}
-					server.broadcast(Type.REL);
-				} else
-					Console.log("You wasn't in CS.");
-
+				server.send("rel");
 				break;
 
 			default:
@@ -76,6 +62,7 @@ public class View implements model.bean.View {
 	}
 
 	private void initialize() {
+
 		try {
 			server.setView(this);
 			server.setPort(port);
@@ -85,18 +72,24 @@ public class View implements model.bean.View {
 			server.autoConnect();
 			server.reloadAll();
 		} catch (Exception e) {
+			Console.log(Color.TEXT_RED, "Cannot initialize");
 			e.printStackTrace();
+			System.exit(0);
 		}
 	}
 
-	@Override
-	public void render() throws RemoteException {
+	public void render() {
 
 		Console.log();
-		int master = server.getIndex();
-		String CS = Color.BG_PURPLE + "       " + Color.TEXT_RESET;
+		int master = -1;
+		try {
+			master = server.getIndex();
+		} catch (RemoteException e) {
+			e.printStackTrace();
+		}
+		String CS = Color.BG_PURPLE + "        " + Color.TEXT_RESET;
 		if (server.getIsInCS()) {
-			CS = Color.BG_YELLOW + "(IN CS)" + Color.TEXT_RESET;
+			CS = Color.BG_YELLOW + " IN CS  " + Color.TEXT_RESET;
 		}
 		Console.log(CS + " SERVER " + master + " at " + server.getTimestamp());
 		try {
@@ -106,21 +99,15 @@ public class View implements model.bean.View {
 			Comparator<Message> c = new Comparator<Message>() {
 				@Override
 				public int compare(Message a, Message b) {
-					return a.getAtInt() > b.getAtInt() ? 1 : -1;
+					return a.getAt() > b.getAt() ? 1 : -1;
 				}
 			};
 			transaction.sort(c);
 
 			for (Message message : transaction) {
-				String dimension = message.getDimension();
-				if (dimension.equals("  ->")) {
-					dimension = Color.BG_BLUE + dimension + Color.TEXT_RESET;
-				} else {
-					dimension = Color.BG_RED + dimension + Color.TEXT_RESET;
-				}
-				Console.log(message.getAt() + " " + dimension + " " + message.getDisplay());
+				Console.log(message.toString());
 			}
-			Console.log(Color.BG_PURPLE, "CS     ");
+			Console.log(Color.BG_PURPLE, " LIST   ");
 
 			for (Server cs : server.getCS()) {
 				Console.log("SERVER " + cs.getIndex());
