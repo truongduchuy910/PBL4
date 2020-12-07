@@ -52,7 +52,7 @@ public class View {
 				break;
 
 			default:
-				Console.log("Command not found");
+				Console.log("Command not found.");
 				break;
 			}
 
