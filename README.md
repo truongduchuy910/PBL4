@@ -10,5 +10,5 @@ javac -d bin/ -cp src /home/robert/eclipse-workspace/PBL4/src/view/View.java
 java -cp bin view.View
 ```
 
-**note** You also run in Eclipse. But text or background color only support in terminal of OS.
+**note** This is Eclipse project. You can run in Eclipse. But text or background color only support in terminal of OS.
 
