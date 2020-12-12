@@ -7,11 +7,12 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.Enumeration;
-import java.util.LinkedList;
-import java.util.Queue;
+import java.util.ArrayList;
 import java.util.Stack;
 
 import model.BO.Lamport;
+import model.BO.Message.Direction;
+import model.BO.Message.Type;
 import view.View;
 
 public class Server implements model.bean.Server {
@@ -22,21 +23,88 @@ public class Server implements model.bean.Server {
 	private int start;
 	private int port;
 	private int timestamp;
+
+	/**
+	 * Stub of this server
+	 */
 	private model.bean.Server master;
-	private Stack<model.bean.Server> orthers = new Stack<model.bean.Server>();
-	private Queue<model.bean.Server> CS = new LinkedList<model.bean.Server>();
-	private Boolean isInCS = false;
-	private Stack<Message> send = new Stack<Message>();
-	private Stack<Message> receive = new Stack<Message>();
+
+	/**
+	 * Stub of all server
+	 */
+	private ArrayList<model.bean.Server> orthers = new ArrayList<model.bean.Server>();
+
+	private Stack<model.bean.Server> to = new Stack<model.bean.Server>();
+	/**
+	 * Flag for receive REP
+	 */
 	private Stack<Boolean> isRep = new Stack<Boolean>();
+
+	private Boolean isInCS = false;
+	private ArrayList<Message> requests = new ArrayList<Message>();
+	private ArrayList<Message> messages = new ArrayList<Message>();
+
 	private View view;
 	private Lamport lamport = new Lamport();
 
 	/*
 	 * START GENERAL GETTER
 	 */
+
+	public void addMessage(Message e) {
+
+		messages.add(e);
+		messages.sort(Message.byAt);
+		if (e.getDirection() == Direction.RECEIVE && e.getType() == Type.REQ) {
+			requests.add(e);
+			requests.sort(Message.bySendAt);
+		}
+	}
+
+	public Stack<model.bean.Server> getTo() {
+		return to;
+	}
+
+	public void setTo(Stack<model.bean.Server> to) {
+		this.to = to;
+	}
+
+	public model.bean.Server peek() {
+		try {
+			return requests.get(0).getFrom();
+		} catch (Exception e) {
+			return null;
+		}
+
+	}
+
+	public void pop(model.bean.Server receiver) {
+		try {
+			if (requests.get(0).getFrom().getIndex() == receiver.getIndex()) {
+				requests.remove(0);
+			}
+		} catch (Exception e) {
+		}
+	}
+
 	public Stack<Boolean> getIsRep() {
 		return isRep;
+	}
+
+	public ArrayList<Message> getRequests() {
+		return requests;
+	}
+
+	public void setRequests(ArrayList<Message> requests) {
+		this.requests = requests;
+	}
+
+	public ArrayList<Message> getMessages() {
+		return messages;
+	}
+
+	public void setMessages(ArrayList<Message> messages) {
+		this.messages = messages;
 	}
 
 	public void setIsRep(Stack<Boolean> isRep) {
@@ -51,14 +119,6 @@ public class Server implements model.bean.Server {
 		this.isInCS = isInCS;
 	}
 
-	public Queue<model.bean.Server> getCS() {
-		return CS;
-	}
-
-	public void setCS(Queue<model.bean.Server> CS) {
-		this.CS = CS;
-	}
-
 	public View getView() {
 
 		return view;
@@ -68,7 +128,7 @@ public class Server implements model.bean.Server {
 		this.view = view;
 	}
 
-	public Stack<model.bean.Server> getOrthers() {
+	public ArrayList<model.bean.Server> getOrthers() {
 		return orthers;
 	}
 
@@ -80,7 +140,7 @@ public class Server implements model.bean.Server {
 		this.master = server;
 	}
 
-	public void setOrthers(Stack<model.bean.Server> orthers) throws RemoteException {
+	public void setOrthers(ArrayList<model.bean.Server> orthers) throws RemoteException {
 		this.orthers = orthers;
 	}
 
@@ -106,22 +166,6 @@ public class Server implements model.bean.Server {
 
 	public void setPort(int port) throws RemoteException {
 		this.port = port;
-	}
-
-	public Stack<Message> getSend() {
-		return send;
-	}
-
-	public void setSend(Stack<Message> send) {
-		this.send = send;
-	}
-
-	public Stack<Message> getReceive() {
-		return receive;
-	}
-
-	public void setReceive(Stack<Message> receive) {
-		this.receive = receive;
 	}
 
 	public int getTimestamp() {
@@ -187,15 +231,17 @@ public class Server implements model.bean.Server {
 
 	}
 
-	model.bean.Server getMasterByIndex(int index) throws RemoteException {
-		if (index == getIndex())
-			return master;
+	model.bean.Server getMasterByIndex(int index) {
+
 		for (model.bean.Server server : getOrthers()) {
-			if (server.getIndex() == index) {
-				return server;
+			try {
+				if (server.getIndex() == index) {
+					return server;
+				}
+			} catch (RemoteException e) {
 			}
 		}
-		throw new RemoteException("Not found");
+		return null;
 	}
 
 	public void autoConnect() throws Exception {
@@ -222,7 +268,6 @@ public class Server implements model.bean.Server {
 					server.render();
 			}
 		} catch (RemoteException e) {
-			e.printStackTrace();
 		}
 
 	}
@@ -241,7 +286,7 @@ public class Server implements model.bean.Server {
 			if (!getOrthers().contains(stub)
 
 			) {
-				getOrthers().push(stub);
+				getOrthers().add(stub);
 			}
 			/**
 			 * if new server appear declare it in IsRepArray
@@ -268,14 +313,7 @@ public class Server implements model.bean.Server {
 
 	@Override
 	public void receive(String command) throws RemoteException {
-		try {
-			lamport.receive(this, command);
-		} catch (RemoteException e) {
-			throw new RemoteException("Cannot receive message");
-		} catch (NumberFormatException e) {
-			throw new RemoteException("Params error: " + command);
-		}
-
+		lamport.receive(this, command);
 	}
 
 	@Override
@@ -286,6 +324,65 @@ public class Server implements model.bean.Server {
 	@Override
 	public int getIndex() throws RemoteException {
 		return port - start;
+	}
+
+	public ArrayList<model.bean.Server> getCS() {
+		ArrayList<model.bean.Server> servers = new ArrayList<model.bean.Server>();
+		for (Message message : requests) {
+			servers.add(message.getFrom());
+		}
+		return servers;
+	}
+
+	public boolean someOneDown() {
+		boolean have = false;
+		for (int i = 0; i < getOrthers().size(); i++) {
+			try {
+				getOrthers().get(i).getIndex();
+			} catch (Exception e) {
+				getOrthers().remove(i);
+				have = true;
+				break;
+			}
+		}
+		for (int i = 0; i < getRequests().size(); i++) {
+			try {
+				getRequests().get(i).getFrom().getIndex();
+			} catch (Exception e) {
+				getRequests().remove(i);
+
+				have = true;
+				break;
+			}
+		}
+		for (int i = 0; i < getTo().size(); i++) {
+			try {
+				getTo().get(i).getIndex();
+			} catch (Exception e) {
+				getTo().remove(i);
+				have = true;
+				break;
+			}
+		}
+
+		if (have)
+			try {
+				checkCS();
+			} catch (RemoteException e) {
+				e.printStackTrace();
+			}
+		return have;
+	}
+
+	public void checkCS() throws RemoteException {
+		setIsInCS(true);
+		if (getTo().size() <= 0)
+			setIsInCS(false);
+		for (model.bean.Server i : getTo()) {
+			if (getIsRep().get(i.getIndex()) == false) {
+				setIsInCS(false);
+			}
+		}
 	}
 
 }

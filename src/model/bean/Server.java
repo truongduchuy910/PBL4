@@ -19,4 +19,6 @@ public interface Server extends Remote {
 
 	public int getTimestamp() throws RemoteException;
 
+	public boolean someOneDown() throws RemoteException;
+
 }

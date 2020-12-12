@@ -1,12 +1,8 @@
 package view;
 
-import java.rmi.RemoteException;
-import java.util.Comparator;
 import java.util.Scanner;
-import java.util.Stack;
 
 import model.BO.Message;
-import model.BO.Message.Type;
 import model.bean.Server;
 
 public class View {
@@ -30,7 +26,7 @@ public class View {
 				render();
 			} catch (Exception e) {
 			}
-			System.out.print(Color.TEXT_CYAN + "➜ " + Color.TEXT_RESET);
+
 			command = scanner.nextLine();
 			excute(command);
 
@@ -52,11 +48,12 @@ public class View {
 				break;
 
 			default:
-				Console.log("Command not found");
+				Console.log("Command not found.");
 				break;
 			}
 
 		} catch (Exception e) {
+			Console.log("Error.");
 		}
 
 	}
@@ -79,45 +76,43 @@ public class View {
 	}
 
 	public void render() {
-
-		Console.log();
-		int master = -1;
+		Console.clear();
 		try {
-			master = server.getIndex();
-		} catch (RemoteException e) {
-			e.printStackTrace();
-		}
-		String CS = Color.BG_PURPLE + "        " + Color.TEXT_RESET;
-		if (server.getIsInCS()) {
-			CS = Color.BG_YELLOW + " IN CS  " + Color.TEXT_RESET;
-		}
-		Console.log(CS + " SERVER " + master + " at " + server.getTimestamp());
-		try {
-			Stack<Message> transaction = new Stack<Message>();
-			transaction.addAll(server.getSend());
-			transaction.addAll(server.getReceive());
-			Comparator<Message> c = new Comparator<Message>() {
-				@Override
-				public int compare(Message a, Message b) {
-					return a.getAt() > b.getAt() ? 1 : -1;
-				}
-			};
-			transaction.sort(c);
-
-			for (Message message : transaction) {
+			Console.log();
+			for (Message message : server.getMessages()) {
 				Console.log(message.toString());
 			}
-			Console.log(Color.BG_PURPLE, " LIST   ");
+			/**
+			 * DISPLAY CS
+			 */
+			String CS = Color.BG_PURPLE + "        " + Color.TEXT_RESET;
+			if (server.getIsInCS()) {
+				CS = Color.BG_YELLOW + " IN CS  " + Color.TEXT_RESET;
+			}
+			int master = -1;
+			master = server.getIndex();
+			Console.log(CS + " SERVER " + master + " at " + server.getTimestamp());
+
+			for (Server server : server.getOrthers()) {
+				Console.print("S" + server.getIndex() + " ");
+			}
+			Console.log();
+
+			for (Server isRep : server.getTo()) {
+				Console.print(" " + server.getIsRep().get(isRep.getIndex()) + " ");
+			}
+			Console.log();
 
 			for (Server cs : server.getCS()) {
 				Console.log("SERVER " + cs.getIndex());
 			}
-
+			Console.log();
 		} catch (Exception e) {
-			Console.log("...");
+			if (server.someOneDown()) {
+				render();
+			}
 		}
-
-		Console.log();
+		System.out.print(Color.TEXT_CYAN + "➜ " + Color.TEXT_RESET);
 	}
 
 }
