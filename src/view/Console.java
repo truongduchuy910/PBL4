@@ -11,6 +11,10 @@ public class Console {
 		System.out.println();
 	}
 
+	public static void print(String c1) {
+		System.out.print(c1 + Color.TEXT_RESET);
+	}
+
 	public static void log(String c1) {
 		System.out.println(c1 + Color.TEXT_RESET);
 	}

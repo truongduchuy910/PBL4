@@ -3,8 +3,6 @@ package model.BO;
 import java.rmi.RemoteException;
 import java.util.concurrent.ThreadLocalRandom;
 
-import model.BO.Message.Direction;
-
 public class Deliver extends Thread {
 	private Message message;
 
@@ -22,7 +20,6 @@ public class Deliver extends Thread {
 		try {
 			Thread.sleep(message.getDuration());
 		} catch (InterruptedException e) {
-			e.printStackTrace();
 		}
 
 		/**
@@ -30,9 +27,14 @@ public class Deliver extends Thread {
 		 */
 
 		try {
+			message.getFrom().someOneDown();
 			message.getTo().receive(message.toCommand());
 		} catch (RemoteException e) {
-			e.printStackTrace();
+			try {
+				message.getFrom().someOneDown();
+			} catch (RemoteException e1) {
+				e1.printStackTrace();
+			}
 		}
 
 	}

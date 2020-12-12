@@ -1,18 +1,19 @@
 package model.BO;
 
 import java.rmi.RemoteException;
-import java.util.Stack;
+import java.util.ArrayList;
 
 import model.BO.Message.Direction;
 import model.BO.Message.Type;
-import model.bean.Server;
 import view.Console;
 
 public class Lamport implements model.bean.Lamport {
+	ArrayList<Message> requests = new ArrayList<Message>();
+
 	@Override
 	public void request(model.BO.Server sender) throws Exception {
 		if (!sender.getIsInCS()) {
-			resetCSCheck(sender);
+
 			boardcast(sender, Type.REQ);
 		} else
 			Console.log("You was in CS.");
@@ -21,7 +22,6 @@ public class Lamport implements model.bean.Lamport {
 	@Override
 	public void release(model.BO.Server sender) throws Exception {
 		if (sender.getIsInCS()) {
-			resetCSCheck(sender);
 			boardcast(sender, Type.REL);
 		} else
 			Console.log("You wasn't in CS.");
@@ -31,16 +31,25 @@ public class Lamport implements model.bean.Lamport {
 		/**
 		 * Fill IsRep with false
 		 */
+
 		sender.setIsInCS(false);
-		for (model.bean.Server orther : sender.getOrthers()) {
-			sender.getIsRep().set(orther.getIndex(), false);
-		}
+//		for (model.bean.Server orther : sender.getTo()) {
+//			sender.getIsRep().set(orther.getIndex(), false);
+//		}
+		sender.getTo().clear();
+		sender.getTo().empty();
 
 	}
 
 	@Override
 	public void receive(model.BO.Server receiver, String command) throws RemoteException {
-		Message message = new Message(receiver, command);
+		Message message = null;
+		try {
+			message = new Message(receiver, command);
+		} catch (Exception e) {
+			Console.log(command);
+			e.printStackTrace();
+		}
 		message.setDirection(Direction.RECEIVE);
 		/**
 		 * find max and inscrease
@@ -49,24 +58,19 @@ public class Lamport implements model.bean.Lamport {
 		message.setReceiveAt(receiver.getTimestamp());
 
 		/**
-		 * add message to Stack
+		 * add message to ArrayList
 		 */
-		receiver.getReceive().add(message);
+		receiver.addMessage(message);
 
 		/**
 		 * algorithm
 		 */
 		switch (message.getType()) {
 		case REQ:
-
-			/**
-			 * Add server send message to queue
-			 */
-			receiver.getCS().add(message.getFrom());
 			/**
 			 * REP
 			 */
-			model.bean.Server top = receiver.getCS().peek();
+			model.bean.Server top = receiver.peek();
 			if (top != null && top.getIndex() == message.getFrom().getIndex()) {
 				receiver.incTimestamp();
 				Message rep = new Message(Direction.SEND, Type.REP, receiver, top, receiver.getTimestamp(), -1);
@@ -75,7 +79,7 @@ public class Lamport implements model.bean.Lamport {
 				/**
 				 * Add message to stack
 				 */
-				receiver.getSend().add(rep);
+				receiver.addMessage(rep);
 			}
 
 			break;
@@ -84,11 +88,11 @@ public class Lamport implements model.bean.Lamport {
 			/**
 			 * Remove server send message from queue
 			 */
-			receiver.getCS().remove();
+			receiver.pop(message.getFrom());
 			/**
 			 * REP
 			 */
-			model.bean.Server next = receiver.getCS().peek();
+			model.bean.Server next = receiver.peek();
 			if (next != null) {
 				receiver.incTimestamp();
 				Message rep = new Message(Direction.SEND, Type.REP, receiver, next, receiver.getTimestamp(), -1);
@@ -97,13 +101,13 @@ public class Lamport implements model.bean.Lamport {
 				/**
 				 * Add message to stack
 				 */
-				receiver.getSend().add(rep);
+				receiver.addMessage(rep);
 			}
 			break;
 		case REP:
 
 			receiver.getIsRep().set(message.getFrom().getIndex(), true);
-			checkCS(receiver);
+			receiver.checkCS();
 			break;
 		default:
 			break;
@@ -116,103 +120,29 @@ public class Lamport implements model.bean.Lamport {
 		}
 	}
 
-	public void boardcast(model.BO.Server sender, Type type) {
+	public void boardcast(model.BO.Server sender, Type type) throws RemoteException {
+		resetCSCheck(sender);
+
+		;
 		sender.incTimestamp();
 		/**
 		 * get all server
 		 */
-		Stack<model.bean.Server> servers = sender.getOrthers();
+		ArrayList<model.bean.Server> servers = sender.getOrthers();
 
 		for (model.bean.Server receiper : servers) {
+			if (type == Type.REQ)
+				sender.getTo().add(receiper);
+
 			Message message = new Message(Direction.SEND, type, sender, receiper, sender.getTimestamp(), -1);
 			message.setSendAt(sender.getTimestamp());
 			new Deliver(message).start();
 			/**
-			 * add messsage to Stack
+			 * add messsage to ArrayList
 			 */
-			sender.getSend().add(message);
-
+			sender.addMessage(message);
 		}
 
 	}
 
-	private void checkCS(model.BO.Server server) throws RemoteException {
-		server.setIsInCS(true);
-		for (model.bean.Server orther : server.getOrthers()) {
-			if (server.getIsRep().get(orther.getIndex()) == false) {
-				server.setIsInCS(false);
-			}
-		}
-	}
 }
-//
-//class Receive extends Thread {
-//	private model.BO.Server server;
-//	private Message message;
-//
-//	public Receive(model.BO.Server server, String command) throws NumberFormatException, RemoteException {
-//		this.server = server;
-//		this.message = new Message(server, command);
-//	}
-//
-//	public void run() {
-//
-//		
-//
-//	}
-//
-//	private void checkCS() throws RemoteException {
-//		message.getFrom().setIsInCS(true);
-//		for (model.bean.Server orther : message.getFrom().getOrthers()) {
-//			if (message.getFrom().getIsRep().get(orther.getIndex()) == false) {
-//				message.getFrom().setIsInCS(false);
-//			}
-//		}
-//	}
-//}
-//	public void receive(String command) throws RemoteException {
-//		Message message = new Message(this, command);
-//		try {
-//			Receive receive = new Receive(this, message);
-//			receive.start();
-//		} catch (Exception e) {
-//			e.printStackTrace();
-//		}
-//	}
-//
-//	public void broadcast(Type type) throws Exception {
-//		try {
-//			Broadcast broadcast = new Broadcast(this, type);
-//			broadcast.start();
-//		} catch (Exception e) {
-//			e.printStackTrace();
-//		}
-//	}
-//	try {
-//		model.bean.Server top = sender.getCS().peek();
-//		if (top != null && top.getIndex() == sender.getFrom().getIndex()) {
-//			incTimestamp();
-//			Message rep = new Message(Type.REP, getServer(), message.getFrom(), getTimestamp(), -1);
-//			rep.setDimension("  ->");
-//			rep.delivery();
-//			/**
-//			 * Add message to stack
-//			 */
-//			getSend().add(rep);
-//		}
-//	} catch (RemoteException e) {
-//		e.printStackTrace();
-//	}
-
-//		if (getIsInCS()) {
-//			/**
-//			 * Fill IsRel with false for next REQ
-//			 */
-//			setIsInCS(false);
-//
-//			for (model.bean.Server orther : getOrthers()) {
-//				getIsRep().set(orther.getIndex(), false);
-//			}
-//			broadcast(Type.REL);
-//		} else
-//			Console.log("You wasn't in CS.");

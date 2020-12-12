@@ -1,11 +1,31 @@
 package model.BO;
 
 import java.rmi.RemoteException;
+import java.util.Comparator;
 
 import view.Color;
-import view.Console;
 
 public class Message {
+	public static Comparator<Message> byAt = new Comparator<Message>() {
+		@Override
+		public int compare(Message a, Message b) {
+			return a.getAt() > b.getAt() ? 1 : -1;
+		}
+	};
+	public static Comparator<Message> bySendAt = new Comparator<Message>() {
+		@Override
+		public int compare(Message a, Message b) {
+			int result = 0;
+			try {
+				result = a.getSendAt() == b.getSendAt() ? (a.getFrom().getIndex() > b.getFrom().getIndex() ? 1 : -1)
+						: (a.getSendAt() > b.getSendAt() ? 1 : -1);
+			} catch (RemoteException e) {
+				result = 0;
+			}
+			return result;
+		}
+	};
+
 	public static enum Type {
 		REQ, REL, REP
 	}
@@ -110,19 +130,17 @@ public class Message {
 		this.receiveAt = receiveAt;
 	}
 
-	public Message(Server server, String command) {
-		try {
-			String[] args = command.split("&");
-			this.direction = Message.Direction.valueOf(args[0]);
-			this.type = Message.Type.valueOf(args[1]);
-			this.from = server.getMasterByIndex(Integer.parseInt(args[2]));
-			this.to = server.getMasterByIndex(Integer.parseInt(args[3]));
-			this.sendAt = Integer.parseInt(args[4]);
-			this.receiveAt = Integer.parseInt(args[5]);
-			this.duration = Integer.parseInt(args[6]);
-		} catch (Exception e) {
-			Console.log(Color.TEXT_RED, command);
-		}
+	public Message(Server server, String command) throws NumberFormatException, RemoteException {
+		String[] args = command.split("&");
+		this.direction = Message.Direction.valueOf(args[0]);
+		this.type = Message.Type.valueOf(args[1]);
+		this.from = server.getMasterByIndex(Integer.parseInt(args[2]));
+		this.to = server.getMasterByIndex(Integer.parseInt(args[3]));
+		this.sendAt = Integer.parseInt(args[4]);
+		this.receiveAt = Integer.parseInt(args[5]);
+		this.duration = Integer.parseInt(args[6]);
+		// SEND&REQ&2&0&6&-1&1080
+
 	}
 
 	public String toCommand() {
@@ -162,10 +180,16 @@ public class Message {
 
 	public java.lang.String toString() {
 		try {
-			return getAtString() + " " + getDirectionString() + " " + getTypeString() + " from [s"
-					+ getFrom().getIndex() + "] to [s" + getTo().getIndex() + "] " + getDuration() + " ms";
+			if (getDirection() == Direction.SEND) {
+				return getAtString() + " " + getDirectionString() + " " + getTypeString() + "   to S"
+						+ getTo().getIndex() + " " + getDuration() + " ms";
+			} else {
+				return getAtString() + " " + getDirectionString() + " " + getTypeString() + " from S"
+						+ getFrom().getIndex() + " " + getDuration() + " ms";
+			}
 		} catch (RemoteException e) {
-			return e.toString();
+			return getAtString() + " " + getDirectionString() + " " + getTypeString() + "   to S" + "?" + " "
+					+ getDuration() + " ms";
 		}
 	}
 
